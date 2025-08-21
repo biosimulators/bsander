@@ -2,10 +2,10 @@ import argparse
 import os
 import sys
 
-from bsandr_utils.input_types import ContainerizationTypes, ContainerizationEngine, ProgramArguments
-from bsandr_utils.experiment_archive import extract_pbif_from_archive
-from pbic3g.local_registry import load_local_modules
-from pbic3g.containerization.container_constructor import build_dockerfile_for_necessary_env
+from bsander.bsandr_utils.input_types import ContainerizationTypes, ContainerizationEngine, ProgramArguments
+from bsander.bsandr_utils.experiment_archive import extract_pbif_from_archive
+from bsander.pbic3g.local_registry import load_local_modules
+from bsander.pbic3g.containerization.container_constructor import build_dockerfile_for_necessary_env
 
 
 def get_program_arguments() -> ProgramArguments:

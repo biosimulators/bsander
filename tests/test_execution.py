@@ -2,8 +2,7 @@ import os
 import tempfile
 import zipfile
 
-from pbic3g.containerization.container_constructor import *
-from bsandr_utils.input_types import ContainerizationTypes, ContainerizationEngine
+from bsander.bsandr_utils.input_types import ContainerizationTypes, ContainerizationEngine, ProgramArguments
 from main import execute_bsander as run_bsander
 
 def test_build_dockerfile_for_necessary_env_from_archive() -> None:

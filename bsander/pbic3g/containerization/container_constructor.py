@@ -1,8 +1,8 @@
 import os.path
 import re
 
-from bsandr_utils.input_types import ProgramArguments
-from pbic3g.containerization.container_file import get_generic_dockerfile_template, pull_substitution_keys_from_document
+from bsander.bsandr_utils.input_types import ProgramArguments
+from bsander.pbic3g.containerization.container_file import get_generic_dockerfile_template, pull_substitution_keys_from_document
 
 def build_dockerfile_for_necessary_env(program_arguments: ProgramArguments) -> str:
     docker_template: str = get_generic_dockerfile_template()

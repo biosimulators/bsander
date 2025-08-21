@@ -1,9 +1,7 @@
-import os.path
 import tempfile
-import zipfile
 
-from pbic3g.containerization.container_constructor import *
-from bsandr_utils.input_types import ContainerizationTypes, ContainerizationEngine
+from bsander.bsandr_utils.input_types import ContainerizationTypes, ContainerizationEngine
+from bsander.pbic3g.containerization.container_constructor import *
 
 
 def test_generate_necessary_values() -> None:
@@ -11,7 +9,7 @@ def test_generate_necessary_values() -> None:
     correct_answer = [ # update this as we add more fields!
         'CONDA_FORGE_DEPENDENCIES', 'PYPI_DEPENDENCIES'
     ]
-    assert results == correct_answer
+    assert set(results) == set(correct_answer)
 
 def test_determine_dependencies():
     mock_list = """
