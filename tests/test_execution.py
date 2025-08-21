@@ -3,7 +3,8 @@ import tempfile
 import zipfile
 
 from bsander.bsandr_utils.input_types import ContainerizationTypes, ContainerizationEngine, ProgramArguments
-from main import execute_bsander as run_bsander
+from bsander.execution import execute_bsander as run_bsander
+
 
 def test_build_dockerfile_for_necessary_env_from_archive() -> None:
     correct_answer = \
