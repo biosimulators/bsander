@@ -1,0 +1,11 @@
+[project]
+name = "bsander"
+version = "0.1.0"
+description = "Analyzes a Process-Bigraph `.pbif` file, and creates a configuration that will run in a given environment."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pip>=25.1.1",
+    "process-bigraph>=0.0.38",
+    "setuptools>=80.9.0",
+]
