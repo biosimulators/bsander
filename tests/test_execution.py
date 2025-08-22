@@ -9,8 +9,7 @@ from bsander.execution import execute_bsander as run_bsander
 def test_build_dockerfile_for_necessary_env_from_archive() -> None:
     correct_answer = \
 """
-FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm
-SHELL ["bash", "-c"]
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm
 
 RUN apt update
 RUN apt upgrade -y
@@ -21,8 +20,7 @@ RUN apt install -y git curl
 # No conda dependencies!
 
 ### PyPI
-RUN echo "'numpy>=2.0.0' 'process-bigraph<1.0'" >> requirements.txt
-RUN python3 -m pip install -r requirements.txt
+RUN python3 -m pip install 'numpy>=2.0.0' 'process-bigraph<1.0'
 
 ##
 RUN mkdir /runtime

@@ -13,16 +13,23 @@ def test_generate_necessary_values() -> None:
 
 def test_determine_dependencies():
     mock_list = """
-    `pypi:numpy[>=2.0.0]@numpy.random.rand`
-    `pypi:process-bigraph[<1.0]@process_bigraph.processes.ParameterScan`
-    `pypi:importlib@importlib.metadata.distribution`
-    `conda:readdy@readdy.ReactionDiffusionSystem`
+`pypi:numpy[>=2.0.0]@numpy.random.rand`
+`pypi:process-bigraph[<1.0]@process_bigraph.processes.ParameterScan`
+`pypi:importlib@importlib.metadata.distribution`
+`conda:readdy@readdy.ReactionDiffusionSystem`
     """.strip()
-    correct_answer = [
+    correct_answer = ([
         'numpy>=2.0.0',
         'process-bigraph<1.0',
         'importlib',
-    ], [ 'readdy' ]
+    ], [
+        'readdy'
+    ], """
+`local:numpy.random.rand`
+`local:process_bigraph.processes.ParameterScan`
+`local:importlib.metadata.distribution`
+`local:readdy.ReactionDiffusionSystem`
+""".strip())
     results = determine_dependencies(mock_list)
     assert results == correct_answer
 
@@ -41,17 +48,14 @@ def _build_dockerfile_for_necessary_env_exec(correct_answer: str, fake_input_fil
         with tempfile.NamedTemporaryFile(mode="w", dir=tmpdir, delete=False) as fake_target_file:
             fake_target_file.write(fake_input_file)
         test_args = ProgramArguments(fake_target_file.name, tmpdir, ContainerizationTypes.SINGLE, ContainerizationEngine.DOCKER)
-        results_file_location = build_dockerfile_for_necessary_env(test_args)
-        with open(results_file_location, "r") as results_file:
-            results = results_file.read()
+        results = formulate_dockerfile_for_necessary_env(test_args)
         assert results == correct_answer
 
 
 def test_build_dockerfile_for_necessary_env_pypi_only() -> None:
     correct_answer = \
 """
-FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm
-SHELL ["bash", "-c"]
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm
 
 RUN apt update
 RUN apt upgrade -y
@@ -62,8 +66,7 @@ RUN apt install -y git curl
 # No conda dependencies!
 
 ### PyPI
-RUN echo "'numpy>=2.0.0' 'process-bigraph<1.0'" >> requirements.txt
-RUN python3 -m pip install -r requirements.txt
+RUN python3 -m pip install 'numpy>=2.0.0' 'process-bigraph<1.0'
 
 ##
 RUN mkdir /runtime
@@ -83,8 +86,7 @@ ENTRYPOINT ["python3", "/runtime/main.py"]
 def test_build_dockerfile_for_necessary_env_both() -> None:
     correct_answer = \
 """
-FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm
-SHELL ["bash", "-c"]
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm
 
 RUN apt update
 RUN apt upgrade -y
@@ -99,8 +101,7 @@ RUN micromamba create -y -p /opt/conda -c conda-forge readdy python=3.12
 ENV PATH=/opt/conda/bin:$PATH
 
 ### PyPI
-RUN echo "'numpy>=2.0.0' 'process-bigraph<1.0'" >> requirements.txt
-RUN python3 -m pip install -r requirements.txt
+RUN python3 -m pip install 'numpy>=2.0.0' 'process-bigraph<1.0'
 
 ##
 RUN mkdir /runtime
@@ -122,8 +123,7 @@ ENTRYPOINT ["python3", "/runtime/main.py"]
 def test_build_dockerfile_for_necessary_env_conda() -> None:
     correct_answer = \
 """
-FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm
-SHELL ["bash", "-c"]
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm
 
 RUN apt update
 RUN apt upgrade -y

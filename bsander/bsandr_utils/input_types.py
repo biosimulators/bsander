@@ -12,6 +12,7 @@ class ContainerizationEngine(Enum):
     NONE=0
     DOCKER=1
     APPTAINER=2
+    BOTH=3
 
 
 @dataclass

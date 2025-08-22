@@ -16,7 +16,7 @@ def get_program_arguments() -> ProgramArguments:
                         help="specifies if a containerized runtime should be initialized. "
                              "`single` mode will reject a configuration that results in multiple containers needing to be coordinated together."
                              "`multiple` mode will accept a result that is a coordination of multiple containers.")
-    parser.add_argument('--target-containerization', choices=['docker', 'apptainer'],
+    parser.add_argument('-t', '--target-containerization', choices=['docker', 'apptainer', 'both'],
                         help="if containerization is specified, selects whether to containerize with `docker` or `apptainer` (formerly Singularity CE)")
     parser.add_argument('-o', '--output_directory', nargs='?', const='.',
                         help="specifies output directory; if not provided, no output file will be generated, but validation (and containerization if requested) will occur.")
@@ -61,9 +61,11 @@ def get_program_arguments() -> ProgramArguments:
             containerization_engine = ContainerizationEngine.DOCKER
         elif args.target_containerization == 'apptainer':
             containerization_engine = ContainerizationEngine.APPTAINER
+        elif args.target_containerization == 'both':
+            containerization_engine = ContainerizationEngine.BOTH
         else:
             parser.print_help()
-            print("error: `target-containerization` must be `docker` or `apptainer`.", file=sys.stderr)
+            print("error: `target-containerization` must be `docker`, `apptainer`, or `both.", file=sys.stderr)
             sys.exit(14)
 
     return ProgramArguments(input_file_path=args.input_file_path, output_dir=args.output_directory,

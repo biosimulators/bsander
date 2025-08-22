@@ -2,8 +2,7 @@ import re
 
 def get_generic_dockerfile_template() -> str:
     return """
-FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm
-SHELL ["bash", "-c"]
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm
 
 RUN apt update
 RUN apt upgrade -y
