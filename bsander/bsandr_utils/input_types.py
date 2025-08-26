@@ -19,5 +19,6 @@ class ContainerizationEngine(Enum):
 class ProgramArguments:
     input_file_path: str
     output_dir: str | None
+    whitelist_file: str | None
     containerization_type: ContainerizationTypes
     containerization_engine: ContainerizationEngine

@@ -47,7 +47,7 @@ def _build_dockerfile_for_necessary_env_exec(correct_answer: str, fake_input_fil
     with tempfile.TemporaryDirectory() as tmpdir:
         with tempfile.NamedTemporaryFile(mode="w", dir=tmpdir, delete=False) as fake_target_file:
             fake_target_file.write(fake_input_file)
-        test_args = ProgramArguments(fake_target_file.name, tmpdir, ContainerizationTypes.SINGLE, ContainerizationEngine.DOCKER)
+        test_args = ProgramArguments(fake_target_file.name, tmpdir, None, ContainerizationTypes.SINGLE, ContainerizationEngine.DOCKER)
         results = formulate_dockerfile_for_necessary_env(test_args)
         assert results == correct_answer
 

@@ -11,15 +11,18 @@ def get_program_arguments() -> ProgramArguments:
         prog='BioSimulators Tool, Abstraction, Node, & Dependency Resolver (BStandr)',
         description='''BioSimulators project designed to help users resolve any abstract or missing components, 
             and/or creating a containerized environment to repeatedly run the provided experiment''')
-    parser.add_argument('input_file_path')  # positional argument
+    parser.add_argument('input_file_path', type=str)  # positional argument
     parser.add_argument('-c', '--containerize', choices=['single', 'multiple'],
                         help="specifies if a containerized runtime should be initialized. "
                              "`single` mode will reject a configuration that results in multiple containers needing to be coordinated together."
                              "`multiple` mode will accept a result that is a coordination of multiple containers.")
-    parser.add_argument('-t', '--target-containerization', choices=['docker', 'apptainer', 'both'],
+    parser.add_argument('-t', '--target-containerization', choices=['docker', 'apptainer', "singularity", 'both'],
                         help="if containerization is specified, selects whether to containerize with `docker` or `apptainer` (formerly Singularity CE)")
     parser.add_argument('-o', '--output_directory', nargs='?', const='.',
                         help="specifies output directory; if not provided, no output file will be generated, but validation (and containerization if requested) will occur.")
+    parser.add_argument("-w", "--whitelist", type=str,
+                        help="path to a whitelist file that if specified, will declare valid packages to create an environment with. ")
+    parser.add_argument('-v', '--verbose', action="store_true")
     args = parser.parse_args()
     if args.target_containerization is not None and args.containerize is None:
         parser.print_help()
@@ -45,6 +48,14 @@ def get_program_arguments() -> ProgramArguments:
     else:
         args.output_directory = args.input_file_path.parent
 
+    if args.whitelist is not None:
+        args.whitelist = os.path.abspath(os.path.expanduser(args.whitelist))
+        if not os.path.exists(args.whitelist) or not (
+                os.path.isfile(args.whitelist) or os.path.islink(args.whitelist)):
+            parser.print_help()
+            print("`whitelist` must be a file that exists!", file=sys.stderr)
+            sys.exit(13)
+
     containerization_type: ContainerizationTypes = ContainerizationTypes.NONE
     containerization_engine: ContainerizationEngine = ContainerizationEngine.NONE
     if args.containerize is not None:
@@ -55,25 +66,31 @@ def get_program_arguments() -> ProgramArguments:
         else:  # should never get here
             parser.print_help()
             print("error: `containerize` must be `single` or `multiple` if requested.", file=sys.stderr)
-            sys.exit(13)
+            sys.exit(14)
 
         if args.target_containerization == 'docker':
             containerization_engine = ContainerizationEngine.DOCKER
-        elif args.target_containerization == 'apptainer':
+        elif args.target_containerization == 'apptainer' or args.target_containerization == 'singularity':
             containerization_engine = ContainerizationEngine.APPTAINER
         elif args.target_containerization == 'both':
             containerization_engine = ContainerizationEngine.BOTH
         else:
             parser.print_help()
             print("error: `target-containerization` must be `docker`, `apptainer`, or `both.", file=sys.stderr)
-            sys.exit(14)
+            sys.exit(15)
 
-    return ProgramArguments(input_file_path=args.input_file_path, output_dir=args.output_directory,
+    return ProgramArguments(input_file_path=args.input_file_path,
+                            output_dir=args.output_directory,
+                            whitelist_file=args.whitelist,
                             containerization_type=containerization_type,
                             containerization_engine=containerization_engine)
 
 def main():
-    execute_bsander(get_program_arguments())
+    prog_args = get_program_arguments()
+    try:
+        execute_bsander(prog_args)
+    except Exception as e:
+        print(e, file=sys.stderr)
 
 if __name__ == "__main__":
     main()

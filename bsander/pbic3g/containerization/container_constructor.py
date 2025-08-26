@@ -9,7 +9,7 @@ def formulate_dockerfile_for_necessary_env(program_arguments: ProgramArguments) 
     pb_document_str: str
     with open(program_arguments.input_file_path, "r") as pb_document_file:
         pb_document_str = pb_document_file.read()
-    pypi_deps, conda_deps, updated_document_str = determine_dependencies(pb_document_str)
+    pypi_deps, conda_deps, updated_document_str = determine_dependencies(pb_document_str, program_arguments.whitelist_file)
     if updated_document_str != pb_document_str: # we need to update file
         with open(program_arguments.input_file_path, "w") as pb_document_file:
             pb_document_file.write(updated_document_str)
@@ -54,9 +54,14 @@ def generate_necessary_values() -> list[str]:
 # in the same python environment, we need a solid address protocol to assume.
 # going with: `pypi:<package_name>[<version_statement>]@<python_module_path_to_class_def>`
 #         ex: "pypi:copasi-basico[~0.8]@basico.model_io.load_model" (if this was a class, and not a function)
-def determine_dependencies(search_string: str) -> tuple[list[str],list[str], str]:
+def determine_dependencies(search_string: str, whitelist_file_path: str = None) -> tuple[list[str],list[str], str]:
     pypi_dependencies: list[str] = []
     conda_dependencies: list[str] = []
+    if whitelist_file_path is not None:
+        with open(whitelist_file_path, "r") as whitelist_file:
+            whitelist_file_contents = set(whitelist_file.read().split("\n"))
+    else:
+        whitelist_file_contents = None
     package_name_legal_syntax = r"[\w\-._~:/?#[\]@!$&'()*+,;=%]+" # package or git-http repo name
     version_string_legal_syntax = r"\[([\w><=~!*\-.]+)]" # hard brackets around alphanumeric plus standard python version contraint characters
     import_name_legal_syntax = r"[A-Za-z_]\w*(\.[A-Za-z_]\w*)*" # stricter pattern of only legal python module names (letters and underscore first character, alphanumeric and underscore for remainder); must be at least 1 char long
@@ -65,10 +70,14 @@ def determine_dependencies(search_string: str) -> tuple[list[str],list[str], str
     for match in re.findall(pypi_regex_pattern, search_string):
         package_name = match[0]
         package_version = match[2]
+        if whitelist_file_contents is not None and "pypi:" + package_name not in whitelist_file_contents:
+            raise ValueError(f"`{package_name}` from PyPI is not a trusted package.")
         pypi_dependencies.append(f"{package_name}{package_version}".strip())
     for match in re.findall(conda_regex_pattern, search_string):
         package_name = match[0]
         package_version = match[2]
+        if whitelist_file_contents is not None and "conda:" + package_name not in whitelist_file_contents:
+            raise ValueError(f"`{package_name}` from CondaForge is not a trusted package.")
         conda_dependencies.append(f"{package_name}{package_version}".strip())
     # Now that we've got all the dependencies, we need to change to protocols to "local"
     pypi_regex_prefix = f"pypi:({package_name_legal_syntax})({version_string_legal_syntax})?@"

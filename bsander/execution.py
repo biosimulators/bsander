@@ -22,6 +22,7 @@ def execute_bsander(original_program_arguments: ProgramArguments):
 
         print("file copied to `{}`".format(shutil.copy(original_program_arguments.input_file_path, new_input_file_path)))
     required_program_arguments = ProgramArguments(new_input_file_path, original_program_arguments.output_dir,
+                                                  original_program_arguments.whitelist_file,
                                                   original_program_arguments.containerization_type,
                                                   original_program_arguments.containerization_engine)
 
