@@ -6,18 +6,45 @@ import pytest
 from bsander.bsandr_utils.input_types import ContainerizationTypes, ContainerizationEngine, ProgramArguments
 from bsander.execution import execute_bsander as run_bsander
 
-def test_whitelist_rejects_appropriately():
+fake_input_file = \
+"""
+"pypi:numpy[>=2.0.0]@numpy.random.rand"
+"pypi:process-bigraph[<1.0]@process_bigraph.processes.ParameterScan"
+""".strip()
+
+fake_input_file_2 = \
+"""
+"secret_protocol:numpy[>=2.0.0]@totally.not.malicious
+"pypi:process-bigraph[<1.0]@process_bigraph.processes.ParameterScan"
+""".strip()
+
+def test_whitelist_rejects_invalid_whitelist_appropriately():
     with pytest.raises(ValueError):
-        _perform_execution_with_whitelist("")
+        _perform_execution_with_whitelist(fake_input_file,"")
+
+def test_whitelist_rejects_untrusted_package_from_valid_whitelist_appropriately():
+    valid_whitelist = """
+pypi:process-bigraph
+""".strip()
+    with pytest.raises(ValueError):
+        _perform_execution_with_whitelist(fake_input_file, valid_whitelist)
+
+def test_whitelist_rejects_unknown_source_from_valid_whitelist_appropriately():
+    valid_whitelist_with_invalid_source = """
+pypi:process-bigraph
+pypi:numpy
+""".strip()
+    with pytest.raises(ValueError):
+        _perform_execution_with_whitelist(fake_input_file_2, valid_whitelist_with_invalid_source)
 
 def test_whitelist_approves_appropriately():
     valid_whitelist = """
 pypi:numpy
 pypi:process-bigraph
 """.strip()
-    _perform_execution_with_whitelist(valid_whitelist)
+    _perform_execution_with_whitelist(fake_input_file, valid_whitelist)
 
-def _perform_execution_with_whitelist(whitelist_str: str):
+def _perform_execution_with_whitelist(input_pbif_as_string: str, whitelist_str: str):
     correct_answer = \
 """
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm
@@ -41,19 +68,13 @@ RUN python3 -m pip install -e /runtime
 
 ENTRYPOINT ["python3", "/runtime/main.py"]
 """.strip()
-    fake_input_file = \
-"""
-"pypi:numpy[>=2.0.0]@numpy.random.rand"
-"pypi:process-bigraph[<1.0]@process_bigraph.processes.ParameterScan"
-""".strip()
     with tempfile.TemporaryDirectory() as tmpdir:
         whitelist_file_path = os.path.join(tmpdir, "whitelist.txt")
-        with open(whitelist_file_path, "w") as whitelist_file:
-            whitelist_file.write(whitelist_str)
+        whitelist_tokens = whitelist_str.strip().split("\n")
         zip_path = os.path.join(tmpdir, "inputArchive.omex")
         with zipfile.ZipFile(zip_path, "a") as zip_ref:
-            zip_ref.writestr("inputFile.pbif", fake_input_file)
-        test_args = ProgramArguments(zip_path, tmpdir, whitelist_file_path, ContainerizationTypes.SINGLE,
+            zip_ref.writestr("inputFile.pbif", input_pbif_as_string)
+        test_args = ProgramArguments(zip_path, tmpdir, whitelist_tokens, ContainerizationTypes.SINGLE,
                                      ContainerizationEngine.DOCKER)
         run_bsander(test_args)
         output_dockerfile = os.path.join(tmpdir, "Dockerfile")

@@ -22,7 +22,7 @@ def execute_bsander(original_program_arguments: ProgramArguments):
 
         print("file copied to `{}`".format(shutil.copy(original_program_arguments.input_file_path, new_input_file_path)))
     required_program_arguments = ProgramArguments(new_input_file_path, original_program_arguments.output_dir,
-                                                  original_program_arguments.whitelist_file,
+                                                  original_program_arguments.whitelist_entries,
                                                   original_program_arguments.containerization_type,
                                                   original_program_arguments.containerization_engine)
 
@@ -56,3 +56,4 @@ def execute_bsander(original_program_arguments: ProgramArguments):
         new_archive_path = os.path.join(original_program_arguments.output_dir, base_name)
         target_dir = os.path.join(original_program_arguments.output_dir, base_name.split(".")[0])
         shutil.make_archive(new_archive_path, 'zip', target_dir)
+        shutil.move(new_archive_path + ".zip", new_archive_path) # get rid of extra suffix

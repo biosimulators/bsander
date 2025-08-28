@@ -55,7 +55,10 @@ def get_program_arguments() -> ProgramArguments:
             parser.print_help()
             print("`whitelist` must be a file that exists!", file=sys.stderr)
             sys.exit(13)
-
+        with args.whitelist.open() as f:
+            whitelist_contents = f.read().strip().split("\n")
+    else:
+        whitelist_contents = None
     containerization_type: ContainerizationTypes = ContainerizationTypes.NONE
     containerization_engine: ContainerizationEngine = ContainerizationEngine.NONE
     if args.containerize is not None:
@@ -81,7 +84,7 @@ def get_program_arguments() -> ProgramArguments:
 
     return ProgramArguments(input_file_path=args.input_file_path,
                             output_dir=args.output_directory,
-                            whitelist_file=args.whitelist,
+                            whitelist_entries=whitelist_contents,
                             containerization_type=containerization_type,
                             containerization_engine=containerization_engine)
 

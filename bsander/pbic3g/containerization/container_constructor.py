@@ -9,7 +9,7 @@ def formulate_dockerfile_for_necessary_env(program_arguments: ProgramArguments) 
     pb_document_str: str
     with open(program_arguments.input_file_path, "r") as pb_document_file:
         pb_document_str = pb_document_file.read()
-    pypi_deps, conda_deps, updated_document_str = determine_dependencies(pb_document_str, program_arguments.whitelist_file)
+    pypi_deps, conda_deps, updated_document_str = determine_dependencies(pb_document_str, program_arguments.whitelist_entries)
     if updated_document_str != pb_document_str: # we need to update file
         with open(program_arguments.input_file_path, "w") as pb_document_file:
             pb_document_file.write(updated_document_str)
@@ -54,37 +54,54 @@ def generate_necessary_values() -> list[str]:
 # in the same python environment, we need a solid address protocol to assume.
 # going with: `pypi:<package_name>[<version_statement>]@<python_module_path_to_class_def>`
 #         ex: "pypi:copasi-basico[~0.8]@basico.model_io.load_model" (if this was a class, and not a function)
-def determine_dependencies(search_string: str, whitelist_file_path: str = None) -> tuple[list[str],list[str], str]:
-    pypi_dependencies: list[str] = []
-    conda_dependencies: list[str] = []
-    if whitelist_file_path is not None:
-        with open(whitelist_file_path, "r") as whitelist_file:
-            whitelist_file_contents = set(whitelist_file.read().split("\n"))
+def determine_dependencies(string_to_search: str, whitelist_entries: list[str] = None) -> tuple[list[str],list[str], str]:
+    whitelist_mapping: dict[str, set[str]] | None
+    if whitelist_entries is not None:
+        whitelist_mapping = {}
+        for whitelist_entry in whitelist_entries:
+            entry = whitelist_entry.split(":")
+            if len(entry) != 2:
+                raise ValueError(f"invalid whitelist entry: {whitelist_entry}")
+            source, package = (entry[0],entry[1])
+            if source not in whitelist_mapping:
+                whitelist_mapping[source] = set()
+            whitelist_mapping[source].add(package)
     else:
-        whitelist_file_contents = None
+        whitelist_mapping = None
+    source_name_legal_syntax = r"[\w\-]+"
     package_name_legal_syntax = r"[\w\-._~:/?#[\]@!$&'()*+,;=%]+" # package or git-http repo name
-    version_string_legal_syntax = r"\[([\w><=~!*\-.]+)]" # hard brackets around alphanumeric plus standard python version contraint characters
+    version_string_legal_syntax = r"\[([\w><=~!*\-.]+)]" # hard brackets around alphanumeric plus standard python version constraint characters
     import_name_legal_syntax = r"[A-Za-z_]\w*(\.[A-Za-z_]\w*)*" # stricter pattern of only legal python module names (letters and underscore first character, alphanumeric and underscore for remainder); must be at least 1 char long
-    pypi_regex_pattern = f"pypi:({package_name_legal_syntax})({version_string_legal_syntax})?@({import_name_legal_syntax})"
-    conda_regex_pattern = f"conda:({package_name_legal_syntax})({version_string_legal_syntax})?@({import_name_legal_syntax})"
-    for match in re.findall(pypi_regex_pattern, search_string):
-        package_name = match[0]
-        package_version = match[2]
-        if whitelist_file_contents is not None and "pypi:" + package_name not in whitelist_file_contents:
-            raise ValueError(f"`{package_name}` from PyPI is not a trusted package.")
-        pypi_dependencies.append(f"{package_name}{package_version}".strip())
-    for match in re.findall(conda_regex_pattern, search_string):
-        package_name = match[0]
-        package_version = match[2]
-        if whitelist_file_contents is not None and "conda:" + package_name not in whitelist_file_contents:
-            raise ValueError(f"`{package_name}` from CondaForge is not a trusted package.")
-        conda_dependencies.append(f"{package_name}{package_version}".strip())
-    # Now that we've got all the dependencies, we need to change to protocols to "local"
-    pypi_regex_prefix = f"pypi:({package_name_legal_syntax})({version_string_legal_syntax})?@"
-    conda_regex_prefix = f"conda:({package_name_legal_syntax})({version_string_legal_syntax})?@"
-    adjusted_search = re.sub(pypi_regex_prefix, "local:", search_string)
-    adjusted_search = re.sub(conda_regex_prefix, "local:", adjusted_search)
-    return pypi_dependencies, conda_dependencies, adjusted_search
+    known_sources = ["pypi", "conda"]
+    approved_dependencies: dict[str, list[str]] = { source : [] for source in known_sources }
+    regex_pattern = f"({source_name_legal_syntax}):({package_name_legal_syntax})({version_string_legal_syntax})?@({import_name_legal_syntax})"
+    adjusted_search_string = str(string_to_search)
+    matches = re.findall(regex_pattern, string_to_search)
+    if len(matches) == 0:
+        local_protocol_matches = re.findall(f"local:{import_name_legal_syntax}", string_to_search)
+        if len(local_protocol_matches) == 0:
+            raise ValueError(f"No dependencies found in document; unable to generate environment.")
+        raise ValueError("Document is using local protocols; unable to determine needed environment.")
+    for match in matches:
+        source_name = match[0]
+        package_name = match[1]
+        package_version = match[3]
+        if source_name not in known_sources:
+            raise ValueError(f"Unknown source `{source_name}` used; can not determine dependencies")
+        dependency_str = f"{package_name}{package_version}".strip()
+        if dependency_str in approved_dependencies[source_name]:
+            continue # We've already accounted for this dependency
+        if whitelist_mapping is not None:
+            # We need to validate against whitelist!
+            if source_name not in whitelist_mapping:
+                raise ValueError(f"Unapproved source `{source_name}` used; can not trust document")
+            if package_name not in whitelist_mapping[source_name]:
+                raise ValueError(f"`{package_name}` from `{source_name}` is not a trusted package; can not trust document")
+        approved_dependencies[source_name].append(dependency_str)
+        version_str = match[2] if package_version != "" else ""
+        complete_match = f"{source_name}:{package_name}{version_str}@{match[4]}"
+        adjusted_search_string = adjusted_search_string.replace(complete_match, f"local:{match[4]}")
+    return approved_dependencies['pypi'], approved_dependencies['conda'], adjusted_search_string.strip()
 
 def convert_dependencies_to_installation_string_representation(dependencies: list[str]) -> str:
     return "'"+ "' '".join(dependencies) + "'"
